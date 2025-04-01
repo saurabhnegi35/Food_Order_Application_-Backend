@@ -58,7 +58,10 @@ export const CreateVendor = async (
       .json({ message: "Vendor created successfully", vendor: newVendor });
   } catch (error) {
     // Handle internal server errors
-    res.status(500).json({ message: "Internal Server Error", error: error });
+    res.status(500).json({
+      message: "An error occurred while creating the vendor",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
 };
 
@@ -83,7 +86,10 @@ export const GetVendors = async (
       .json({ message: "Vendors retrieved successfully", vendors });
   } catch (error) {
     // Handle internal server errors
-    res.status(500).json({ message: "Internal Server Error", error: error });
+    res.status(500).json({
+      message: "An error occurred while retrieving vendors",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
 };
 
@@ -92,5 +98,31 @@ export const GetVendorById = async (
   res: Response,
   next: NextFunction
 ) => {
-  res.json({ message: "Vendor Sent Successfully" });
+  try {
+    // Extract the vendor ID from request parameters
+    const vendorId = req.params?.id;
+
+    // Validate vendorId (must be a valid MongoDB ObjectId format)
+    if (!vendorId || vendorId.length !== 24) {
+      res.status(400).json({ message: "Invalid vendor ID format" });
+    }
+
+    // Fetch the vendor from the database using the provided ID
+    const vendor = await Vendor.findById(vendorId);
+
+    // If vendor does not exist, return a 404 response
+    if (!vendor) {
+      res.status(404).json({ message: "Vendor not found" });
+      return;
+    }
+
+    // If vendor is found, return success response with vendor details
+    res.status(200).json({ message: "Vendor retrieved successfully", vendor });
+  } catch (error) {
+    // Handle internal server errors
+    res.status(500).json({
+      message: "An error occurred while retrieving the vendor",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
 };
