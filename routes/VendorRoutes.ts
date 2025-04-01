@@ -13,6 +13,6 @@ router.post("/login", VendorLogin);
 router.use(Authenticate);
 router.get("/profile", GetVendorProfile);
 router.patch("/profile", UpdateVendorProfile);
-router.patch("/profile", UpdateVendorService);
+router.patch("/service", UpdateVendorService);
 
 export { router as VendorRoutes };

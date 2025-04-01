@@ -152,16 +152,46 @@ export const UpdateVendorProfile = async (
   }
 };
 
+/**
+ * Toggles the service availability status of an authenticated vendor.
+ */
 export const UpdateVendorService = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
+    // Extract authenticated user from request
+    const user = req.user;
+
+    // Check if user is authenticated
+    if (!user) {
+      res.status(401).json({ message: "Unauthorized access" });
+    }
+
+    // Retrieve vendor details from the database
+    const existingVendor = await FindVendor(user?._id);
+
+    // Check if the vendor exists
+    if (!existingVendor) {
+      res.status(404).json({ message: "Vendor profile not found" });
+    }
+
+    // Toggle service availability status
+    existingVendor.serviceAvailability = !existingVendor.serviceAvailability;
+
+    // Save the updated vendor profile
+    const savedResult = await existingVendor.save();
+
+    // Send success response
+    res.status(200).json({
+      message: "Vendor availability updated successfully",
+      serviceAvailability: savedResult.serviceAvailability, // Return only relevant data
+    });
   } catch (error) {
     // Handle internal server errors
     res.status(500).json({
-      message: "An error occurred while retrieving the vendor",
+      message: "An error occurred while updating vendor availability",
       error: error instanceof Error ? error.message : "Unknown error",
     });
   }
