@@ -2,8 +2,13 @@ import { Request, Response, NextFunction } from "express";
 import { EditVendorInputs, VendorLoginInputs } from "../dto";
 import { FindVendor } from "./AdminController";
 import { GenerateToken, ValidatePassword } from "../utility";
-import { Vendor } from "../models";
 
+/**
+ * Handles vendor login authentication.
+ *
+ * This function verifies the vendor's email and password, generates a JWT token
+ * upon successful authentication, and returns the token for future requests.
+ */
 export const VendorLogin = async (
   req: Request,
   res: Response,
