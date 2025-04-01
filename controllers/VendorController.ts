@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { VendorLoginInput } from "../dto";
 import { FindVendor } from "./AdminController";
-import { ValidatePassword } from "../utility";
+import { GenerateToken, ValidatePassword } from "../utility";
+import { Vendor } from "../models";
 
 export const VendorLogin = async (
   req: Request,
@@ -13,21 +14,31 @@ export const VendorLogin = async (
     const { email, password } = <VendorLoginInput>req.body;
 
     // Attempt to find the vendor by email using the FindVendor function
-    const existingUser = await FindVendor("", email);
+    const existingVendor = await FindVendor("", email);
 
     // Check if the vendor exists
-    if (existingUser) {
+    if (existingVendor) {
       // Validate the password using the ValidatePassword function
       const valideUser = await ValidatePassword(
         password,
-        existingUser.password,
-        existingUser.salt
+        existingVendor.password,
+        existingVendor.salt
       );
       if (valideUser) {
+        // Generate a JWT token for authentication using the vendor's details
+        // This token will be used for secure access to protected routes
+        const token = await GenerateToken({
+          _id: existingVendor.id,
+          email: existingVendor.email,
+          foodType: existingVendor.foodType,
+          name: existingVendor.name,
+        });
+
         // If the password is valid, send a success response with the vendor data
-        res
-          .status(200)
-          .json({ message: "User logged in successfully", data: existingUser });
+        res.status(200).json({
+          message: "User logged in successfully",
+          token,
+        });
       } else {
         // If the password is invalid, send a bad request response with an appropriate message
         res.status(400).json({ message: "Invalid Credentials..." });
@@ -38,6 +49,78 @@ export const VendorLogin = async (
         .status(404)
         .json({ message: "Vendor not found with the given email" });
     }
+  } catch (error) {
+    // Handle internal server errors
+    res.status(500).json({
+      message: "An error occurred while logging in",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+/**
+ * Retrieves the profile of the currently authenticated vendor.
+ *
+ * This function checks if the authenticated user exists in the request object.
+ * If found, it fetches the vendor details from the database and returns them.
+ * If the vendor is not found, it returns a 404 error response.
+ */
+export const GetVendorProfile = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // Extract user data from the request (added by authentication middleware)
+    const user = req.user;
+
+    if (!user) {
+      res.status(401).json({ message: "Unauthorized access" });
+    }
+
+    // Fetch vendor details from the database using the authenticated user's ID
+    const existingVendor = await FindVendor(user?._id);
+
+    // If no vendor is found, return a 404 response
+    if (!existingVendor) {
+      res.status(404).json({ message: "Vendor profile not found" });
+    }
+
+    // Return vendor profile data
+    res.status(200).json({
+      message: "Vendor profile retrieved successfully",
+      vendor: existingVendor,
+    });
+  } catch (error) {
+    // Handle internal server errors
+    res.status(500).json({
+      message: "An error occurred while retrieving the Profile",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+export const UpdateVendorProfile = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+  } catch (error) {
+    // Handle internal server errors
+    res.status(500).json({
+      message: "An error occurred while retrieving the vendor",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+export const UpdateVendorService = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
   } catch (error) {
     // Handle internal server errors
     res.status(500).json({
