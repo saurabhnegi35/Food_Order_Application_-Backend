@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { VendorLoginInput } from "../dto";
+import { EditVendorInputs, VendorLoginInputs } from "../dto";
 import { FindVendor } from "./AdminController";
 import { GenerateToken, ValidatePassword } from "../utility";
 import { Vendor } from "../models";
@@ -11,7 +11,7 @@ export const VendorLogin = async (
 ) => {
   try {
     // Extract email and password from the request body
-    const { email, password } = <VendorLoginInput>req.body;
+    const { email, password } = <VendorLoginInputs>req.body;
 
     // Attempt to find the vendor by email using the FindVendor function
     const existingVendor = await FindVendor("", email);
@@ -100,16 +100,53 @@ export const GetVendorProfile = async (
   }
 };
 
+/**
+ * Updates the profile details of an authenticated vendor.
+ *
+ * This function extracts user data from the request, verifies authorization,
+ * and updates the vendor's profile with new details provided in the request body.
+ */
 export const UpdateVendorProfile = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
+    // Extract updated profile details from request body
+    const { name, foodType, address, phone } = <EditVendorInputs>req.body;
+    const user = req.user;
+
+    // Check if user is authenticated
+    if (!user) {
+      res.status(401).json({ message: "Unauthorized access" });
+    }
+
+    // Retrieve vendor details from the database
+    const existingVendor = await FindVendor(user?._id);
+
+    // Check if the vendor exists
+    if (!existingVendor) {
+      res.status(404).json({ message: "Vendor profile not found" });
+    }
+
+    // Update vendor details
+    existingVendor.name = name || existingVendor.name;
+    existingVendor.address = address || existingVendor.address;
+    existingVendor.phone = phone || existingVendor.phone;
+    existingVendor.foodType = foodType || existingVendor.foodType;
+
+    // Save the updated vendor profile
+    const savedResult = await existingVendor.save();
+
+    // Send success response
+    res.status(200).json({
+      message: "Vendor profile updated successfully",
+      vendor: savedResult,
+    });
   } catch (error) {
     // Handle internal server errors
     res.status(500).json({
-      message: "An error occurred while retrieving the vendor",
+      message: "An error occurred while updating the vendor profile",
       error: error instanceof Error ? error.message : "Unknown error",
     });
   }
