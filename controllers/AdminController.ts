@@ -5,36 +5,13 @@ import { Vendor } from "../models";
 import { GeneratePassword, GenerateSalt } from "../utility";
 
 export const FindVendor = async (id: string | undefined, email?: string) => {
-  try {
-    // Check if the email is provided
-    if (email) {
-      // Search for the vendor by email
-      const vendor = await Vendor.findOne({ email });
-
-      // If no vendor is found by email
-      if (!vendor) {
-        throw new Error("Invalid Credentials...");
-      }
-
-      return vendor;
-    } else if (id) {
-      // If no email, search by vendor id
-      const vendor = await Vendor.findById(id);
-
-      // If no vendor is found by id
-      if (!vendor) {
-        throw new Error("Vendor with the provided id not found");
-      }
-
-      return vendor;
-    } else {
-      // If neither email nor id is provided, return null or throw an error
-      throw new Error("Invalid Credentials...");
-    }
-  } catch (error) {
-    // Handle the error gracefully
-    console.error("Error finding vendor:", error);
-    throw new Error(error instanceof Error ? error.message : "Unknown error");
+  // Check if an email is provided
+  if (email) {
+    // Search for the vendor by email and return the result
+    return await Vendor.findOne({ email: email });
+  } else {
+    // If no email is provided, search for the vendor by ID and return the result
+    return await Vendor.findById(id);
   }
 };
 
@@ -57,7 +34,7 @@ export const CreateVendor = async (
     } = <CreateVendorInput>req.body;
 
     // Check if a vendor already exists with the given email
-    const existingVendor = await FindVendor(email);
+    const existingVendor = await FindVendor("", email);
 
     if (existingVendor) {
       res.status(409).json({ message: "A Vendor exists with this emailId" });
@@ -84,6 +61,7 @@ export const CreateVendor = async (
       serviceAvailability: false, // Default service availability set to false
       coverImages: [], // Initialize with an empty array for images
       rating: 0, // Default rating
+      foods: [],
     });
 
     // Send success response with newly created vendor details

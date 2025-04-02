@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import { EditVendorInputs, VendorLoginInputs } from "../dto";
+import { CreateFoodInputs, EditVendorInputs, VendorLoginInputs } from "../dto";
 import { FindVendor } from "./AdminController";
 import { GenerateToken, ValidatePassword } from "../utility";
+import { Food } from "../models";
 
 /**
  * Handles vendor login authentication.
@@ -134,20 +135,22 @@ export const UpdateVendorProfile = async (
       res.status(404).json({ message: "Vendor profile not found" });
     }
 
-    // Update vendor details
-    existingVendor.name = name || existingVendor.name;
-    existingVendor.address = address || existingVendor.address;
-    existingVendor.phone = phone || existingVendor.phone;
-    existingVendor.foodType = foodType || existingVendor.foodType;
+    if (existingVendor) {
+      // Update vendor details
+      existingVendor.name = name || existingVendor.name;
+      existingVendor.address = address || existingVendor.address;
+      existingVendor.phone = phone || existingVendor.phone;
+      existingVendor.foodType = foodType || existingVendor.foodType;
 
-    // Save the updated vendor profile
-    const savedResult = await existingVendor.save();
+      // Save the updated vendor profile
+      const savedResult = await existingVendor.save();
 
-    // Send success response
-    res.status(200).json({
-      message: "Vendor profile updated successfully",
-      vendor: savedResult,
-    });
+      // Send success response
+      res.status(200).json({
+        message: "Vendor profile updated successfully",
+        vendor: savedResult,
+      });
+    }
   } catch (error) {
     // Handle internal server errors
     res.status(500).json({
@@ -182,17 +185,19 @@ export const UpdateVendorService = async (
       res.status(404).json({ message: "Vendor profile not found" });
     }
 
-    // Toggle service availability status
-    existingVendor.serviceAvailability = !existingVendor.serviceAvailability;
+    if (existingVendor) {
+      // Toggle service availability status
+      existingVendor.serviceAvailability = !existingVendor.serviceAvailability;
 
-    // Save the updated vendor profile
-    const savedResult = await existingVendor.save();
+      // Save the updated vendor profile
+      const savedResult = await existingVendor.save();
 
-    // Send success response
-    res.status(200).json({
-      message: "Vendor availability updated successfully",
-      serviceAvailability: savedResult.serviceAvailability, // Return only relevant data
-    });
+      // Send success response
+      res.status(200).json({
+        message: "Vendor availability updated successfully",
+        serviceAvailability: savedResult.serviceAvailability, // Return only relevant data
+      });
+    }
   } catch (error) {
     // Handle internal server errors
     res.status(500).json({
@@ -202,43 +207,67 @@ export const UpdateVendorService = async (
   }
 };
 
+/**
+ * Adds a new food item for an authenticated vendor.
+ */
 export const AddFood = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    // Extract authenticated user from request
+    // Extract authenticated user information from the request
     const user = req.user;
 
-    // Check if user is authenticated
+    // Check if the user is authenticated
     if (!user) {
       res.status(401).json({ message: "Unauthorized access" });
     }
 
-    // Retrieve vendor details from the database
-    const existingVendor = await FindVendor(user?._id);
+    // Destructure food details from the request body
+    const { name, description, category, foodType, price, readyTime } = <
+      CreateFoodInputs
+    >req.body;
+
+    // Retrieve vendor details from the database using the user's ID
+    const vendor = await FindVendor(user?._id);
 
     // Check if the vendor exists
-    if (!existingVendor) {
+    if (!vendor) {
       res.status(404).json({ message: "Vendor profile not found" });
     }
 
-    // Toggle service availability status
-    existingVendor.serviceAvailability = !existingVendor.serviceAvailability;
+    if (vendor) {
+      // Create a new food item and associate it with the vendor
+      const createFood = await Food.create({
+        vendorId: vendor._id,
+        name,
+        description,
+        category,
+        foodType,
+        price,
+        readyTime,
+        image: ["photo.png"], // Default image placeholder
+        rating: 0, // Initial rating set to zero
+        foods: [],
+      });
 
-    // Save the updated vendor profile
-    const savedResult = await existingVendor.save();
+      // Add the newly created food item to the vendor's list of foods
+      vendor?.foods.push(createFood);
 
-    // Send success response
-    res.status(200).json({
-      message: "Something Went wrong",
-      serviceAvailability: savedResult.serviceAvailability, // Return only relevant data
-    });
+      // Save the updated vendor document in the database
+      const result = await vendor.save();
+
+      // Send a success response with the updated vendor data
+      res.status(201).json({
+        message: "Food item added successfully",
+        data: result,
+      });
+    }
   } catch (error) {
-    // Handle internal server errors
+    // Handle internal server errors and return an appropriate response
     res.status(500).json({
-      message: "",
+      message: "An error occurred while adding the food item",
       error: error instanceof Error ? error.message : "Unknown error",
     });
   }
