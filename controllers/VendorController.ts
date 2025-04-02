@@ -274,7 +274,6 @@ export const AddFood = async (
   try {
     // Extract authenticated user information from the request
     const user = req.user;
-    console.log("req.files", req.files);
     // Check if the user is authenticated
     if (!user) {
       res.status(401).json({ message: "Unauthorized access" });
