@@ -139,10 +139,71 @@ export const SearchFoods = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {};
+) => {
+  try {
+    // Extract pincode from request parameters
+    const pincode = req.params?.pincode;
+
+    // Validate if pincode is provided
+    if (!pincode) {
+      res.status(400).json({ message: "Pincode is required" });
+      return;
+    }
+
+    const vendors = await Vendor.find({ pincode }).populate("foods"); // Populate the "foods" field with relevant food items
+
+    // If vendors are found, return them with status 200
+    if (vendors.length > 0) {
+      let foodResult: any = [];
+
+      vendors.map((item) => foodResult.push(...item.foods));
+
+      res.status(200).json({
+        message: "Food in your area",
+        data: foodResult,
+      });
+      return;
+    }
+
+    // If no vendors are found, return 404 (Not Found)
+    res.status(404).json({ message: "No Food found for the given pincode" });
+  } catch (error) {
+    // Handle internal server errors properly
+    res.status(500).json({
+      message: "An error occurred while fetching available food",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
 
 export const RestaurantById = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {};
+) => {
+  try {
+    // Extract restaurant ID from request parameters
+    const id = req.params?.id;
+
+    // Find restaurant by ID and populate its foods
+    const vendor = await Vendor.findById(id).populate("foods");
+
+    // If restaurant exists, return its details with status 200 (OK)
+    if (vendor) {
+      res.status(200).json({
+        message: "Restaurant and its foods found successfully",
+        data: vendor,
+      });
+      return;
+    }
+
+    // If no restaurant is found, return 404 (Not Found)
+    res.status(404).json({ message: "Restaurant not found" });
+  } catch (error) {
+    // Handle any server errors and return a 500 (Internal Server Error) response
+    res.status(500).json({
+      message: "An error occurred while fetching the restaurant by ID",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
