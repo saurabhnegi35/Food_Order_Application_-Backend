@@ -160,6 +160,62 @@ export const UpdateVendorProfile = async (
   }
 };
 
+/*
+ * Updates the Cover Image of an authenticated vendor.
+ */
+export const UpdateVendorCoverImage = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    // Extract authenticated user information from the request
+    const user = req.user;
+
+    // Check if the user is authenticated
+    if (!user) {
+      res.status(401).json({ message: "Unauthorized access" });
+      return;
+    }
+
+    // Retrieve vendor details from the database using the user's ID
+    const vendor = await FindVendor(user?._id);
+
+    // Check if the vendor exists
+    if (!vendor) {
+      res.status(404).json({ message: "Vendor profile not found" });
+      return;
+    }
+
+    if (vendor) {
+      const files = req.files as Express.Multer.File[];
+
+      // 🚨 Check if the total image count exceeds 10
+      if (vendor.coverImages.length + files.length > 10) {
+        res.status(400).json({
+          message: "You can upload a maximum of 10 images",
+        });
+        return;
+      }
+
+      const images = files.map((file) => file.filename);
+
+      vendor.coverImages.push(...images);
+      const result = await vendor.save();
+      res.status(201).json({
+        message: "Cover images added successfully",
+        data: result,
+      });
+    }
+  } catch (error) {
+    // Handle internal server errors and return an appropriate response
+    res.status(500).json({
+      message: "An error occurred while adding the food item",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
 /**
  * Toggles the service availability status of an authenticated vendor.
  */
@@ -218,7 +274,7 @@ export const AddFood = async (
   try {
     // Extract authenticated user information from the request
     const user = req.user;
-
+    console.log("req.files", req.files);
     // Check if the user is authenticated
     if (!user) {
       res.status(401).json({ message: "Unauthorized access" });
@@ -238,8 +294,9 @@ export const AddFood = async (
     }
 
     if (vendor) {
-      const files = req.files as [Express.Multer.File];
-      const images = files.map((file: Express.Multer.File) => file.filename);
+      const files = req.files as Express.Multer.File[];
+      const images = files.map((file) => file.filename);
+
       // Create a new food item and associate it with the vendor
       const createFood = await Food.create({
         vendorId: vendor._id,
@@ -249,7 +306,7 @@ export const AddFood = async (
         foodType,
         price,
         readyTime,
-        image: images,
+        images,
         rating: 0, // Initial rating set to zero
         foods: [],
       });
@@ -275,23 +332,43 @@ export const AddFood = async (
   }
 };
 
+/**
+ * Get all food item for an authenticated vendor.
+ */
 export const GetFoods = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    // Extract authenticated user information from the request
+    // Extract authenticated user information from the request (assumed to be the vendor)
     const user = req.user;
 
-    // Check if the user is authenticated
+    // If the user is not authenticated, return an Unauthorized error
     if (!user) {
-      res.status(401).json({ message: "Unauthorized access" });
+      res.status(401).json({
+        message: "Unauthorized: Please log in to access this resource.",
+      });
+    } else {
+      // Fetch all food items belonging to the authenticated vendor
+      const foods = await Food.find({ vendorId: user._id });
+
+      // If no food items are found, return a 404 status
+      if (!foods || foods.length === 0) {
+        res
+          .status(404)
+          .json({ message: "No food items found for this vendor." });
+      }
+
+      // If food items are found, return them with a success response
+      res
+        .status(200)
+        .json({ message: "Food items retrieved successfully.", data: foods });
     }
   } catch (error) {
     // Handle internal server errors
     res.status(500).json({
-      message: "",
+      message: "Internal Server Error: Unable to fetch food items.",
       error: error instanceof Error ? error.message : "Unknown error",
     });
   }

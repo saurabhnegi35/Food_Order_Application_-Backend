@@ -18,6 +18,7 @@ export interface EditVendorInputs {
   address: string;
   phone: string;
   foodType: [string];
+  coverImages: [string];
 }
 
 export interface VendorPayload {
