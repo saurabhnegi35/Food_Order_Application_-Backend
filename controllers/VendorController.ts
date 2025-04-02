@@ -238,6 +238,8 @@ export const AddFood = async (
     }
 
     if (vendor) {
+      const files = req.files as [Express.Multer.File];
+      const images = files.map((file: Express.Multer.File) => file.filename);
       // Create a new food item and associate it with the vendor
       const createFood = await Food.create({
         vendorId: vendor._id,
@@ -247,7 +249,7 @@ export const AddFood = async (
         foodType,
         price,
         readyTime,
-        image: ["photo.png"], // Default image placeholder
+        image: images,
         rating: 0, // Initial rating set to zero
         foods: [],
       });
@@ -279,8 +281,13 @@ export const GetFoods = async (
   next: NextFunction
 ) => {
   try {
-    // Extract authenticated user from request
+    // Extract authenticated user information from the request
     const user = req.user;
+
+    // Check if the user is authenticated
+    if (!user) {
+      res.status(401).json({ message: "Unauthorized access" });
+    }
   } catch (error) {
     // Handle internal server errors
     res.status(500).json({
