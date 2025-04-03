@@ -3,7 +3,6 @@ import jwt from "jsonwebtoken";
 import { Request } from "express";
 
 import { APP_SECRET } from "../config";
-import { VendorPayload } from "../dto";
 import { AuthPayload } from "../dto/Auth.dto";
 
 export const GenerateSalt = async () => {
@@ -22,7 +21,7 @@ export const ValidatePassword = async (
   return (await GeneratePassword(enteredPassword, salt)) === savedPassword;
 };
 
-export const GenerateToken = async (payload: VendorPayload) => {
+export const GenerateToken = async (payload: AuthPayload) => {
   return jwt.sign(payload, APP_SECRET, { expiresIn: "1d" });
 };
 
