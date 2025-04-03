@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from "express";
+import express from "express";
 import { CreateVendor, GetVendorById, GetVendors } from "../controllers/index";
 
 const router = express.Router();
