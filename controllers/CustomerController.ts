@@ -131,13 +131,12 @@ export const CustomerVerify = async (
     }
 
     // Validate OTP and its expiry
-    if (profile.otp !== parseInt(otp)) {
-      res.status(400).json({ message: "Invalid OTP" });
+    if (profile.otp_expiry >= new Date()) {
+      res.status(400).json({ message: "OTP has expired" });
       return;
     }
-
-    if (profile.otp_expiry < new Date()) {
-      res.status(400).json({ message: "OTP has expired" });
+    if (profile.otp !== parseInt(otp)) {
+      res.status(400).json({ message: "Invalid OTP" });
       return;
     }
 
