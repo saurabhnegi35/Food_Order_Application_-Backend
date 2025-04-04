@@ -301,7 +301,34 @@ export const GetCustomerProfile = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {};
+) => {
+  try {
+    // Ensure user is authenticated
+    const customer = req.user;
+    if (!customer) {
+      res.status(401).json({ message: "Unauthorized. Please log in." });
+      return;
+    }
+
+    // Find customer profile
+    const profile = await Customer.findById(customer._id);
+    if (!profile) {
+      res.status(404).json({ message: "Customer profile not found." });
+      return;
+    }
+
+    res.status(200).json({
+      message: "Profile retrieved successfully",
+      data: profile,
+    });
+  } catch (error) {
+    // Handle internal server errors properly
+    res.status(500).json({
+      message: "An error occurred while retrieving the profile.",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
 
 export const EditCustomerProfile = async (
   req: Request,
