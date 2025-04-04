@@ -1,6 +1,6 @@
-import express, { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from "express";
 import { plainToClass } from "class-transformer";
-import { CreateCustomerInputs } from "../dto/Customer.dto";
+import { CreateCustomerInputs, UserLoginInputs } from "../dto/Customer.dto";
 import { validate } from "class-validator";
 import {
   generateOTP,
@@ -8,6 +8,7 @@ import {
   GenerateSalt,
   GenerateToken,
   onRequestOTP,
+  ValidatePassword,
 } from "../utility";
 import { Customer } from "../models/Customer";
 import { verify } from "jsonwebtoken";
@@ -102,7 +103,80 @@ export const CustomerLogin = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {};
+) => {
+  try {
+    // Validate request body against UserLoginInputs schema
+    const loginInputs = plainToClass(UserLoginInputs, req.body);
+    const loginErrors = await validate(loginInputs, {
+      validationError: { target: true },
+    });
+
+    // If validation errors exist, return 400 Bad Request
+    if (loginErrors.length > 0) {
+      res.status(400).json({
+        message: "Invalid input data",
+        error: loginErrors,
+      });
+      return;
+    }
+
+    const { email, password } = loginInputs;
+
+    // Check if customer exists in the database
+    const customer = await Customer.findOne({ email });
+
+    if (!customer) {
+      res.status(404).json({
+        message: "Invalid credentials. Please check your email or password.",
+      });
+      return;
+    }
+
+    // Validate password with stored hash & salt
+    const isPasswordValid = await ValidatePassword(
+      password,
+      customer.password,
+      customer.salt
+    );
+
+    if (!isPasswordValid) {
+      res.status(401).json({
+        message: "Invalid credentials. Please check your email or password.",
+      });
+      return;
+    }
+
+    // Check if the customer has verified their account
+    if (!customer.verified) {
+      res.status(403).json({
+        message:
+          "Account not verified. Please verify your OTP before logging in.",
+      });
+      return;
+    }
+
+    // Generate a new authentication token
+    const token = await GenerateToken({
+      _id: customer.id,
+      email: customer.email,
+      verified: customer.verified,
+    });
+
+    // Send success response with token
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      verified: customer.verified,
+      email: customer.email,
+    });
+  } catch (error) {
+    // Handle internal server errors properly
+    res.status(500).json({
+      message: "An error occurred while logging in",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
 
 export const CustomerVerify = async (
   req: Request,
@@ -131,7 +205,7 @@ export const CustomerVerify = async (
     }
 
     // Validate OTP and its expiry
-    if (profile.otp_expiry >= new Date()) {
+    if (profile.otp_expiry < new Date()) {
       res.status(400).json({ message: "OTP has expired" });
       return;
     }
@@ -145,7 +219,7 @@ export const CustomerVerify = async (
     const updatedCustomerResponse = await profile.save();
 
     // Generate a new token for the verified customer
-    const token = GenerateToken({
+    const token = await GenerateToken({
       _id: updatedCustomerResponse.id,
       email: updatedCustomerResponse.email,
       verified: updatedCustomerResponse.verified,
