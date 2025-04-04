@@ -1,6 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import { plainToClass } from "class-transformer";
-import { CreateCustomerInputs, UserLoginInputs } from "../dto/Customer.dto";
+import {
+  CreateCustomerInputs,
+  EditCustomerProfileInputs,
+  UserLoginInputs,
+} from "../dto/Customer.dto";
 import { validate } from "class-validator";
 import {
   generateOTP,
@@ -297,12 +301,61 @@ export const GetCustomerProfile = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {
-  
-};
+) => {};
 
 export const EditCustomerProfile = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {};
+) => {
+  try {
+    // Ensure user is authenticated
+    const customer = req.user;
+    if (!customer) {
+      res.status(401).json({ message: "Unauthorized. Please log in." });
+      return;
+    }
+
+    // Validate input data
+    const profileInputs = plainToClass(EditCustomerProfileInputs, req.body);
+    const profileErrors = await validate(profileInputs, {
+      validationError: { target: true },
+    });
+
+    if (profileErrors.length > 0) {
+      res.status(400).json({
+        message: "Invalid input data",
+        error: profileErrors,
+      });
+      return;
+    }
+
+    const { firstName, lastName, address } = profileInputs;
+
+    // Find customer profile
+    const profile = await Customer.findById(customer._id);
+    if (!profile) {
+      res.status(404).json({ message: "Customer profile not found." });
+      return;
+    }
+
+    // Update profile details
+    profile.firstName = firstName;
+    profile.lastName = lastName;
+    profile.address = address;
+
+    // Save the updated profile
+    const result = await profile.save();
+
+    res.status(200).json({
+      message: "Profile updated successfully",
+      data: result,
+    });
+  } catch (error) {
+    // Handle internal server errors properly
+    res.status(500).json({
+      message: "An error occurred while editing the profile.",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};

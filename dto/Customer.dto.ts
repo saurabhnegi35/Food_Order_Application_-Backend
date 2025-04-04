@@ -23,6 +23,17 @@ export class UserLoginInputs {
   password: string;
 }
 
+export class EditCustomerProfileInputs {
+  @Length(3, 16, { message: "Firstname must be between 3 to 16 characters" })
+  firstName: string;
+
+  @Length(3, 16, { message: "Lastname must be between 3 to 16 characters" })
+  lastName: string;
+
+  @Length(6, 16, { message: "Address must be between 6 to 16 characters" })
+  address: string;
+}
+
 export interface CustomerPayload {
   _id: string;
   email: string;
