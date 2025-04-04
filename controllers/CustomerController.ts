@@ -245,13 +245,61 @@ export const RequestOtp = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {};
+) => {
+  try {
+    // Ensure user is authenticated
+    const customer = req.user;
+    if (!customer) {
+      res.status(401).json({ message: "Unauthorized. Please log in." });
+      return;
+    }
+
+    // Find customer profile in the database
+    const profile = await Customer.findById(customer._id);
+    if (!profile) {
+      res.status(404).json({ message: "Customer profile not found." });
+      return;
+    }
+
+    // Generate new OTP and expiry
+    const { otp, expiry } = generateOTP(); // Ensure generateOTP() returns expiry
+
+    // Update profile with new OTP
+    profile.otp = otp;
+    profile.otp_expiry = expiry;
+
+    await profile.save();
+
+    // Send OTP via SMS (handle errors in sending OTP)
+    try {
+      await onRequestOTP(otp, profile.phone);
+    } catch (smsError) {
+      res.status(500).json({
+        message: "Failed to send OTP. Please try again later.",
+        error:
+          smsError instanceof Error ? smsError.message : "Unknown SMS error",
+      });
+    }
+
+    res
+      .status(200)
+      .json({ message: "OTP sent to your registered phone number." });
+  } catch (error) {
+    // Handle internal server errors properly
+    res.status(500).json({
+      message: "An error occurred while generating OTP.",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
 
 export const GetCustomerProfile = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {};
+) => {
+  
+};
 
 export const EditCustomerProfile = async (
   req: Request,
