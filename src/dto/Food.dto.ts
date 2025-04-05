@@ -1,4 +1,5 @@
 export interface CreateFoodInputs {
+  _id: string;
   name: string;
   description: string;
   foodType: string;

@@ -3,6 +3,7 @@ import { plainToClass } from "class-transformer";
 import {
   CreateCustomerInputs,
   EditCustomerProfileInputs,
+  OrderInputs,
   UserLoginInputs,
 } from "../dto/Customer.dto";
 import { validate } from "class-validator";
@@ -16,6 +17,8 @@ import {
 } from "../utility";
 import { Customer } from "../models/Customer";
 import { verify } from "jsonwebtoken";
+import { Food } from "../models";
+import { Order } from "../models/Order";
 
 export const CustomerSignUp = async (
   req: Request,
@@ -70,6 +73,7 @@ export const CustomerSignUp = async (
       verified: false,
       latitude: 0,
       longitude: 0,
+      orders: [],
     });
 
     if (result) {
@@ -386,3 +390,153 @@ export const EditCustomerProfile = async (
     });
   }
 };
+
+export const CreateOrder = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    //Grab the currently logged-in customer
+    const customer = req.user;
+
+    if (!customer) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    // Fetch customer profile from DB
+    const profile = await Customer.findById(customer._id);
+    if (!profile) {
+      res.status(404).json({ message: "Customer not found" });
+      return;
+    }
+
+    // Grab order items from request body
+    const cart = req.body as OrderInputs[];
+    if (!cart || cart.length === 0) {
+      res.status(400).json({ message: "Cart is empty" });
+      return;
+    }
+
+    console.log("cart>>>>", cart);
+    // Generate a random order ID
+    const orderId = `${Math.floor(Math.random() * 89999) + 1000}`;
+    console.log("orderId>>>>", orderId);
+    let cartItems = Array();
+    let netAmount = 0.0;
+
+    // 🍽 Fetch food items by IDs present in cart
+    const foods = await Food.find()
+      .where("_id")
+      .in(cart.map((item) => item._id))
+      .exec();
+
+    // Match cart items with food and calculate total
+    foods.forEach((food) => {
+      cart.forEach(({ _id, unit }) => {
+        if (food._id == _id) {
+          netAmount += food.price * unit;
+          cartItems.push({ food, unit });
+        }
+      });
+    });
+
+    if (cartItems.length == 0) {
+      res.status(400).json({ message: "No matching food items found" });
+      return;
+    }
+
+    // Create the order
+    const currentOrder = await Order.create({
+      orderID: orderId,
+      items: cartItems,
+      totalAmount: netAmount,
+      orderDate: new Date(),
+      paidThrough: "COD", // You can later add online methods
+      paymentResponse: "",
+      orderStatus: "waiting",
+    });
+
+    if (!currentOrder) {
+      res.status(500).json({ message: "Failed to create order" });
+      return;
+    }
+
+    // Push order into customer profile and save
+    profile.orders.push(currentOrder);
+    const profileResponse = await profile.save();
+
+    // Send success response
+    res.status(200).json({
+      message: "Order placed successfully",
+      data: profileResponse,
+    });
+    // if (customer) {
+    //   // Create an OrderID
+    //   const orderId = `${Math.floor(Math.random() * 89999) + 1000}`;
+
+    //   const profile = await Customer.findById(customer._id);
+
+    //   //Grab Oder items from request ({id: XX . unit:XX})
+    //   const cart = <[OrderInputs]>req.body; //{id: XX . unit:XX}
+
+    //   let cartItems = Array();
+    //   let netAmount = 0.0;
+
+    //   // Calculate Order Amount
+    //   const foods = await Food.find()
+    //     .where("_id")
+    //     .in(cart.map((item) => item._id))
+    //     .exec();
+    //   foods.map((food) => {
+    //     cart.map(({ _id, unit }) => {
+    //       if (food._id == _id) {
+    //         netAmount += food.price * unit;
+    //         cartItems.push({ food, unit });
+    //       }
+    //     });
+    //   });
+    //   // Create Order with Item Description
+    //   if (cartItems) {
+    //     // Create Order
+    //     const currentOrder = await Order.create({
+    //       orderID: orderId,
+    //       items: cartItems,
+    //       totalAmount: netAmount,
+    //       orderDate: new Date(),
+    //       paidThrough: "COD",
+    //       paymentResponse: "",
+    //       orderStatus: "waiting",
+    //     });
+
+    //     if (currentOrder) {
+    //       profile?.orders.push(currentOrder);
+    //       const profileResponse = await profile?.save();
+
+    //       res.status(200).json({ message: "", data: profileResponse });
+    //       return;
+    //     }
+    //   }
+    //   // Finally Update Orders to User Account
+    // }
+  } catch (error) {
+    // Handle internal server errors properly
+    res.status(500).json({
+      message: "An error occurred while placing the order.",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
+
+export const GetOrders = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {};
+
+export const GetOrderById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {};

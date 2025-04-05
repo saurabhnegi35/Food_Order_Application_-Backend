@@ -7,6 +7,9 @@ import {
   EditCustomerProfile,
   GetCustomerProfile,
   RequestOtp,
+  CreateOrder,
+  GetOrders,
+  GetOrderById,
 } from "../controllers";
 
 const router = express.Router();
@@ -19,5 +22,10 @@ router.patch("/verify", CustomerVerify);
 router.get("/otp", RequestOtp);
 router.get("/profile", GetCustomerProfile);
 router.patch("/profile", EditCustomerProfile);
+
+// Order Routes
+router.post("/create-order", CreateOrder);
+router.get("/orders", GetOrders);
+router.get("/order/:id", GetOrderById);
 
 export { router as CustomerRoutes };
