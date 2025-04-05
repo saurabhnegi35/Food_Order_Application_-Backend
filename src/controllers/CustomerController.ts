@@ -419,10 +419,9 @@ export const CreateOrder = async (
       return;
     }
 
-    console.log("cart>>>>", cart);
     // Generate a random order ID
     const orderId = `${Math.floor(Math.random() * 89999) + 1000}`;
-    console.log("orderId>>>>", orderId);
+
     let cartItems = Array();
     let netAmount = 0.0;
 
@@ -485,7 +484,34 @@ export const GetOrders = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {};
+) => {
+  try {
+    //Grab the currently logged-in customer
+    const customer = req.user;
+
+    if (!customer) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    // Fetch customer profile and populate orders
+    const profile = await Customer.findById(customer._id).populate("orders");
+    if (!profile) {
+      res.status(404).json({ message: "Customer not found" });
+      return;
+    }
+
+    res.status(200).json({
+      message: "Customer Orders fetched successfully",
+      data: profile.orders,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "An error occurred while fetching orders.",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
 
 export const GetOrderById = async (
   req: Request,
