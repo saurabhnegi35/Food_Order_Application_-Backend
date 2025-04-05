@@ -517,4 +517,30 @@ export const GetOrderById = async (
   req: Request,
   res: Response,
   next: NextFunction
-) => {};
+) => {
+  try {
+    const orderId = req.params.id;
+
+    if (!orderId) {
+      res.status(400).json({ message: "Order ID is required" });
+      return;
+    }
+
+    const order = await Order.findById(orderId).populate("items.food");
+
+    if (!order) {
+      res.status(404).json({ message: "Order not found" });
+      return;
+    }
+
+    res.status(200).json({
+      message: "Order fetched successfully",
+      data: order,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "An error occurred while fetching orders.",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};
