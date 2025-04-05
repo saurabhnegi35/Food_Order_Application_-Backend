@@ -470,56 +470,8 @@ export const CreateOrder = async (
     // Send success response
     res.status(200).json({
       message: "Order placed successfully",
-      data: profileResponse,
+      data: currentOrder,
     });
-    // if (customer) {
-    //   // Create an OrderID
-    //   const orderId = `${Math.floor(Math.random() * 89999) + 1000}`;
-
-    //   const profile = await Customer.findById(customer._id);
-
-    //   //Grab Oder items from request ({id: XX . unit:XX})
-    //   const cart = <[OrderInputs]>req.body; //{id: XX . unit:XX}
-
-    //   let cartItems = Array();
-    //   let netAmount = 0.0;
-
-    //   // Calculate Order Amount
-    //   const foods = await Food.find()
-    //     .where("_id")
-    //     .in(cart.map((item) => item._id))
-    //     .exec();
-    //   foods.map((food) => {
-    //     cart.map(({ _id, unit }) => {
-    //       if (food._id == _id) {
-    //         netAmount += food.price * unit;
-    //         cartItems.push({ food, unit });
-    //       }
-    //     });
-    //   });
-    //   // Create Order with Item Description
-    //   if (cartItems) {
-    //     // Create Order
-    //     const currentOrder = await Order.create({
-    //       orderID: orderId,
-    //       items: cartItems,
-    //       totalAmount: netAmount,
-    //       orderDate: new Date(),
-    //       paidThrough: "COD",
-    //       paymentResponse: "",
-    //       orderStatus: "waiting",
-    //     });
-
-    //     if (currentOrder) {
-    //       profile?.orders.push(currentOrder);
-    //       const profileResponse = await profile?.save();
-
-    //       res.status(200).json({ message: "", data: profileResponse });
-    //       return;
-    //     }
-    //   }
-    //   // Finally Update Orders to User Account
-    // }
   } catch (error) {
     // Handle internal server errors properly
     res.status(500).json({
